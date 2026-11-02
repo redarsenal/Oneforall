@@ -272,3 +272,45 @@ body.night .sht,body.night .shl,body.night .shc,body.night .code{background:#1C1
   background:var(--pri);color:var(--prifg);font-size:13.5px;font-weight:600;text-align:center;transition:transform .3s cubic-bezier(.2,.8,.2,1);box-shadow:0 8px 24px rgba(0,0,0,.2)}
 #toast.show{transform:translate(-50%,0)}
 #toast.err{background:var(--red);color:#fff}
+
+/* ---------- animations ---------- */
+:root{--ease:cubic-bezier(.2,.8,.2,1);--spring:cubic-bezier(.34,1.4,.64,1)}
+/* écran du dessous qui recule pendant qu'un écran arrive par la droite */
+.scr{transition:transform .34s var(--ease),filter .34s var(--ease)}
+.scr.under{transform:translate3d(-26%,0,0);filter:brightness(.82)}
+.scr.push{transition:transform .38s var(--ease)}
+.fadein{animation:fadein .28s var(--ease)}
+@keyframes fadein{from{opacity:0;transform:translate3d(0,6px,0)}to{opacity:1;transform:none}}
+/* rangées et contenu de la fiche qui montent en cascade */
+.rise>*{animation:rise .5s var(--ease) both}
+.rise>*:nth-child(2){animation-delay:.05s}.rise>*:nth-child(3){animation-delay:.1s}.rise>*:nth-child(4){animation-delay:.15s}
+.rise>*:nth-child(5){animation-delay:.2s}.rise>*:nth-child(6){animation-delay:.25s}.rise>*:nth-child(n+7){animation-delay:.3s}
+@keyframes rise{from{opacity:0;transform:translate3d(0,18px,0)}to{opacity:1;transform:none}}
+.hero{animation:fadein .45s var(--ease) both}
+/* images en fondu */
+.pi img,.cwi img,.hc>img,.ept img,.dbg,.sst img,.lvt img{opacity:0;transition:opacity .4s ease}
+.pi img.ld,.cwi img.ld,.hc>img.ld,.ept img.ld,.dbg.ld,.sst img.ld,.lvt img.ld{opacity:1}
+.dbg.ld{animation:zoomout 1.2s var(--ease)}
+@keyframes zoomout{from{transform:scale(1.08)}to{transform:none}}
+/* effet d'appui */
+.pi,.cwi,.hc,.btn,.chip,.sc,.ep,.ch,.lvm .lvt,.ib,.seg button,#tabbar button,.shi,.li{transition:transform .18s var(--ease),background-color .2s,opacity .2s}
+.po:active .pi,.cw:active .cwi,.lvm:active .lvt{transform:scale(.95)}
+.hc:active{transform:scale(.98)}
+.btn:active,.chip:active,.ib:active,.seg button:active{transform:scale(.94)}
+.sc:active,.ep:active,.ch:active{transform:scale(.98);opacity:.85}
+.li:active,.shi:active{background-color:var(--sur)}
+/* barre d'onglets : l'icône choisie rebondit */
+#tabbar .on i{animation:pop .4s var(--spring)}
+@keyframes pop{0%{transform:scale(.8)}60%{transform:scale(1.15)}100%{transform:scale(1)}}
+/* chargement : reflet qui passe sur les cases vides */
+.sk .pi,.sk .cwi,.sk .pt{background:linear-gradient(100deg,var(--sk) 30%,var(--sur) 50%,var(--sk) 70%);background-size:300% 100%;animation:shimmer 1.4s linear infinite}
+@keyframes shimmer{from{background-position:100% 0}to{background-position:-100% 0}}
+/* sélections : changement de puce et de segment en douceur */
+.chip,.seg button{transition:transform .18s var(--ease),background-color .25s,color .25s,box-shadow .25s}
+.sw,.sw::after{transition-timing-function:var(--spring)}
+/* lecteur et feuilles */
+.pl.in video{animation:fadein .4s var(--ease)}
+.shi{animation:rise .3s var(--ease) both}
+.pnext{animation:rise .35s var(--ease)}
+#toast{transition:transform .38s var(--spring)}
+@media (prefers-reduced-motion:reduce){*,*::before,*::after{animation:none!important;transition:none!important}}
