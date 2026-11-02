@@ -343,9 +343,14 @@ body.night .seg .on{background:var(--lgon)}
 .sw,.sw::after{transition-duration:calc(.3s * var(--spd));transition-timing-function:var(--spring)}
 /* lecteur, feuilles et message */
 .pl.in video{animation:fadein calc(.5s * var(--spd)) var(--ease)}
-.shp{transition:transform calc(.4s * var(--spd)) var(--ease)}
-.shbg{transition:opacity calc(.3s * var(--spd))}
-.shi{animation:rise calc(.38s * var(--spd)) var(--ease) both}
+.shp{transition:transform calc(.62s * var(--spd)) var(--ease)}
+.shbg{transition:opacity calc(.5s * var(--spd))}
+/* choix d'un réglage : la feuille monte plus posément, les options arrivent une à une */
+.shi{animation:rise calc(.6s * var(--spd)) var(--ease) both}
+.shi:nth-child(2){animation-delay:calc(.05s * var(--spd))}.shi:nth-child(3){animation-delay:calc(.1s * var(--spd))}
+.shi:nth-child(4){animation-delay:calc(.15s * var(--spd))}.shi:nth-child(n+5){animation-delay:calc(.2s * var(--spd))}
+.li{transition:background-color calc(.45s * var(--spd)) ease,transform calc(.4s * var(--spd)) var(--ease)}
+.li:active{transform:scale(.985)}
 .pnext{animation:rise calc(.42s * var(--spd)) var(--ease)}
 #toast{transition:transform calc(.45s * var(--spd)) var(--spring),opacity calc(.25s * var(--spd)),visibility 0s linear calc(.45s * var(--spd))}
 #toast.show{transition:transform calc(.45s * var(--spd)) var(--spring),opacity calc(.2s * var(--spd)),visibility 0s}
