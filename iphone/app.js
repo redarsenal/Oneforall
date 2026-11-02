@@ -11,7 +11,7 @@
 (function () {
   'use strict';
 
-  var VERSION = '1.0.4';
+  var VERSION = '1.0.5';
   var TV_VERSION = '4.4.1';
   var CINEMETA = 'https://v3-cinemeta.strem.io/manifest.json';
   var TRAKT_DEFAULT = 'EQpDUWqtRawg2T1wY0v9IwqyaqM50diU9gBkIbHgb1k';
@@ -882,7 +882,7 @@
     sheetDone = i => { const it = items[i]; closeSheet(); if (it && it.f) it.f(); };
     if (o.mount) o.mount(SHEET.querySelector('.shp'));
   }
-  function closeSheet() { SHEET.className = ''; sheetDone = null; setTimeout(() => { if (!SHEET.className) SHEET.innerHTML = ''; }, 300); }
+  function closeSheet() { SHEET.className = ''; sheetDone = null; setTimeout(() => { if (!SHEET.className) SHEET.innerHTML = ''; }, 1300); }   // après la descente de la feuille
   SHEET.addEventListener('click', e => {
     if (e.target.closest('[data-close]')) return closeSheet();
     const b = e.target.closest('[data-i]');
