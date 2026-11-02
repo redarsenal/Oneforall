@@ -11,7 +11,7 @@
 (function () {
   'use strict';
 
-  var VERSION = '1.0.3';
+  var VERSION = '1.0.4';
   var TV_VERSION = '4.4.1';
   var CINEMETA = 'https://v3-cinemeta.strem.io/manifest.json';
   var TRAKT_DEFAULT = 'EQpDUWqtRawg2T1wY0v9IwqyaqM50diU9gBkIbHgb1k';
@@ -52,7 +52,7 @@
       return v;
     }
   };
-  const CFG = Object.assign({ player: 'auto', ext: 'vlc', subLang: 'fre', subAuto: false, theme: 'auto', liveQ: 'fhd' }, store.get('cfg', {}));
+  const CFG = Object.assign({ player: 'auto', ext: 'vlc', subLang: 'fre', subAuto: false, theme: 'auto', liveQ: 'fhd', anim: 'soft' }, store.get('cfg', {}));
   const saveCfg = () => store.set('cfg', CFG);
   let SETUP = store.get('setup', null);   // { trakt: { id, secret, redirect }, iptv: { servers, username, password } }
 
@@ -1568,6 +1568,12 @@
   const EXT_OPTS = Object.keys(EXT).map(k => [k, EXT[k][0], k === 'vlc' ? 'Gratuit, lit tout' : k === 'infuse' ? 'Le plus joli, Dolby Vision' : '']);
   const SUB_OPTS = Object.keys(LANGS).map(k => [k, LANGS[k]]);
   const THEME_OPTS = [['auto', 'Automatique', 'Suit le réglage de l’iPhone'], ['day', 'Jour'], ['night', 'Nuit']];
+  const ANIM_OPTS = [['soft', 'Douces', 'Par défaut, sans se presser'], ['slow', 'Lentes', 'Pour bien les voir'], ['fast', 'Rapides'], ['off', 'Aucune']];
+  const ANIM_SPD = { fast: 1, soft: 1.35, slow: 1.8, off: 0 };
+  function applyAnim() {
+    document.documentElement.style.setProperty('--spd', ANIM_SPD[CFG.anim] || 1.35);
+    document.body.classList.toggle('noanim', CFG.anim === 'off');
+  }
   function applyTheme() {
     const night = CFG.theme === 'night' || (CFG.theme === 'auto' && window.matchMedia('(prefers-color-scheme: dark)').matches);
     document.body.classList.toggle('night', night);
@@ -1577,7 +1583,13 @@
   function Settings() {
     const S = { cls: 'set' };
     S.build = () => S.render();
-    S.show = () => S.render();
+    // À chaque ouverture de l'onglet, les groupes de réglages montent en cascade.
+    S.show = function () {
+      S.render();
+      S.el.classList.add('rise');
+      clearTimeout(S.riseT);
+      S.riseT = setTimeout(() => S.el.classList.remove('rise'), 1800);
+    };
     const line = (a, l, v, cls) => '<button class="li' + (cls ? ' ' + cls : '') + '" data-a="' + a + '"><span>' + esc(l) + '</span><em>' + esc(v || '') + '</em><i>' + IC.chev + '</i></button>';
     const tog = (a, l, on, sub) => '<button class="li tg" data-a="' + a + '"><span>' + esc(l) + (sub ? '<small>' + esc(sub) + '</small>' : '') + '</span><b class="sw' + (on ? ' on' : '') + '"></b></button>';
     S.render = function () {
@@ -1590,10 +1602,11 @@
         '<h3>Direct</h3><div class="grp">' + line('liveq', 'Qualité des chaînes', LIVE_QL[CFG.liveQ]) +
         (XT() ? line('livere', HTTPS ? 'Liste des chaînes' : 'Recharger les chaînes', LIVE.ch.length ? plural(LIVE.ch.length, 'chaîne') : 'aucune') : line('code', 'IPTV', 'non configurée')) + '</div>' +
         '<h3>Addons</h3><div class="grp">' + line('addons', 'Gérer les addons', plural(addons.length, 'addon')) + line('code', 'Code de configuration', SETUP ? 'importé le ' + frDate(SETUP.at) : 'à coller') + '</div>' +
-        '<h3>Apparence</h3><div class="grp">' + line('theme', 'Thème', lab(THEME_OPTS, CFG.theme)) + '</div>' +
+        '<h3>Apparence</h3><div class="grp">' + line('theme', 'Thème', lab(THEME_OPTS, CFG.theme)) + line('anim', 'Animations', lab(ANIM_OPTS, CFG.anim)) + '</div>' +
         '<h3>Données</h3><div class="grp">' + line('clearcache', 'Vider le cache', 'catalogues, fiches') + line('clearhist', 'Vider « Reprendre la lecture »', '', 'red') + '</div>' +
         '<p class="foot">OneforAll iPhone ' + VERSION + ' · base TV ' + TV_VERSION + '<br>' + (navigator.standalone ? 'Installée sur l’écran d’accueil' : 'Astuce : Partager → « Sur l’écran d’accueil » pour l’installer') + '</p>';
     };
+    const lab2 = (opts, v) => (opts.find(o => o[0] === v) || [0, ''])[1];
     S.act = function (a) {
       const set = (k, v) => { CFG[k] = v; saveCfg(); S.render(); };
       if (a === 'tlink') push(TraktLink());
@@ -1605,6 +1618,7 @@
       else if (a === 'subauto') set('subAuto', !CFG.subAuto);
       else if (a === 'liveq') choose('Qualité des chaînes', Object.keys(LIVE_QL).map(k => [k, LIVE_QL[k]]), CFG.liveQ, v => set('liveQ', v));
       else if (a === 'livere') { if (HTTPS) toast('La liste vient du Mac : relance iphone/build.sh puis recolle le code.'); else liveLoad(true).then(() => S.render()); }
+      else if (a === 'anim') choose('Animations', ANIM_OPTS, CFG.anim, v => { set('anim', v); applyAnim(); toast('Animations : ' + lab2(ANIM_OPTS, v).toLowerCase()); });
       else if (a === 'theme') choose('Thème', THEME_OPTS, CFG.theme, v => { set('theme', v); applyTheme(); });
       else if (a === 'addons') push(Addons());
       else if (a === 'code') codeSheet();
@@ -1760,6 +1774,7 @@
   // Sans ça, Safari n'applique pas :active au toucher (effet d'appui sur les cartes et boutons).
   document.addEventListener('touchstart', () => {}, { passive: true });
   applyTheme();
+  applyAnim();
   APP.innerHTML = '';
   showTab('home');
   refreshManifests().then(ch => { if (ch) { homeDirty = true; refreshVisible(); } });
