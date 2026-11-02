@@ -15,7 +15,7 @@ body.night{
 }
 
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
-html,body{margin:0;height:100%;overflow:hidden;background:var(--bg);color:var(--fg);font:400 15px/1.4 Jakarta,-apple-system,"SF Pro Text",system-ui,sans-serif;-webkit-font-smoothing:antialiased;-webkit-text-size-adjust:100%}
+html,body{margin:0;height:var(--appH,100%);overflow:hidden;background:var(--bg);color:var(--fg);font:400 15px/1.4 Jakarta,-apple-system,"SF Pro Text",system-ui,sans-serif;-webkit-font-smoothing:antialiased;-webkit-text-size-adjust:100%}
 button{font:inherit;color:inherit;background:none;border:0;padding:0;cursor:pointer}
 button:disabled{opacity:.4}
 svg{width:100%;height:100%;display:block}
@@ -24,7 +24,8 @@ img{display:block}
 #boot{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;font-size:22px;letter-spacing:.02em}
 
 /* écrans */
-#app{position:fixed;inset:0}
+/* hauteur réelle de l'écran (voir fitScreen dans app.js) : sinon iOS laisse une bande vide en bas de l'app installée */
+#app{position:fixed;left:0;right:0;top:0;height:var(--appH,100%)}
 .scr{position:absolute;inset:0;overflow-y:auto;overflow-x:hidden;-webkit-overflow-scrolling:touch;overscroll-behavior-y:contain;background:var(--bg);
   padding:calc(var(--st) + 8px) 0 calc(var(--tabh) + 24px)}
 .scr.hid{display:none}
@@ -33,7 +34,7 @@ img{display:block}
 body.full #tabbar{transform:translateY(110%)}
 
 /* barre d'onglets */
-#tabbar{position:fixed;left:0;right:0;bottom:0;z-index:20;height:var(--tabh);padding:6px 4px var(--sb);display:flex;background:var(--bar);
+#tabbar{position:fixed;left:0;right:0;top:calc(var(--appH,100vh) - var(--tabh));z-index:20;height:var(--tabh);padding:6px 4px var(--sb);display:flex;background:var(--bar);
   -webkit-backdrop-filter:saturate(1.6) blur(20px);backdrop-filter:saturate(1.6) blur(20px);border-top:.5px solid var(--line);transition:transform .3s}
 #tabbar button{flex:1;display:flex;flex-direction:column;align-items:center;gap:3px;color:var(--mut);font-size:10.5px;font-weight:500}
 #tabbar i{width:25px;height:25px}
@@ -111,6 +112,7 @@ body.night .seg .on{background:#2A2C2E}
 .cw{flex:none;width:236px;scroll-snap-align:start}
 .cwi{position:relative;aspect-ratio:16/9;border-radius:12px;overflow:hidden;background:var(--sk)}
 .cwi img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
+.cwx{position:absolute;right:6px;top:6px;width:30px;height:30px;padding:6px;border-radius:50%;background:rgba(0,0,0,.45);color:#fff;-webkit-backdrop-filter:blur(8px);backdrop-filter:blur(8px)}
 .cwp{position:absolute;left:10px;top:10px;width:34px;height:34px;padding:9px 8px 9px 10px;border-radius:50%;background:rgba(0,0,0,.45);color:#fff;-webkit-backdrop-filter:blur(8px);backdrop-filter:blur(8px)}
 .lvm{flex:none;width:150px}
 .lvt{position:relative;aspect-ratio:16/9;border-radius:12px;overflow:hidden;display:flex;align-items:center;justify-content:center}
@@ -238,7 +240,7 @@ body.night .grp{background:var(--sur)}
 .tlb .empty{padding:10px}
 
 /* feuille d'actions */
-#sheet{position:fixed;inset:0;z-index:50;pointer-events:none}
+#sheet{position:fixed;left:0;right:0;top:0;height:var(--appH,100%);z-index:50;pointer-events:none}
 #sheet.on{pointer-events:auto}
 .shbg{position:absolute;inset:0;background:rgba(0,0,0,.4);opacity:0;transition:opacity .25s}
 #sheet.on .shbg{opacity:1}
