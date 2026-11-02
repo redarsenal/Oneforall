@@ -11,7 +11,7 @@
 (function () {
   'use strict';
 
-  var VERSION = '1.0.2';
+  var VERSION = '1.0.3';
   var TV_VERSION = '4.4.1';
   var CINEMETA = 'https://v3-cinemeta.strem.io/manifest.json';
   var TRAKT_DEFAULT = 'EQpDUWqtRawg2T1wY0v9IwqyaqM50diU9gBkIbHgb1k';
@@ -833,13 +833,18 @@
     tab = t;
     if (!roots[t]) { const S = ROOTS[t](); roots[t] = S; makeEl(S, 'root ' + S.cls); S.build(); }
     Object.keys(roots).forEach(k => roots[k].el.classList.toggle('hid', k !== t));
+    reveal(roots[t].el);
     const S = roots[t];
     if (S.show) S.show();
     drawTabbar();
     document.body.classList.remove('full');
   }
+  // Rejoue l'animation d'apparition d'un écran (changement d'onglet).
+  function reveal(el) { el.classList.remove('fadein'); void el.offsetWidth; el.classList.add('fadein'); }
   function push(S) {
+    const under = curScreen();
     makeEl(S, 'push ' + S.cls);
+    if (under && under.el && !S.full) under.el.classList.add('under');   // l'écran du dessous glisse un peu, comme sur iOS
     S.build();
     stack.push(S);
     document.body.classList.toggle('full', !!S.full);
@@ -854,6 +859,7 @@
     el.style.transform = '';
     if (instant) el.remove(); else setTimeout(() => el.remove(), 340);
     const top = stack[stack.length - 1] || roots[tab];
+    if (top && top.el) top.el.classList.remove('under');
     document.body.classList.toggle('full', !!(top && top.full));
     if (top && top.show) top.show();
   }
@@ -1035,7 +1041,9 @@
       S.jobs = jobs;
       jobs.forEach((j, i) => { h += '<section class="row cat" data-j="' + i + '"><h2>' + esc(catName(j)) + '<small>' + esc(typeLabel(j.cat.type) + ' · ' + (j.a.m.name || '')) + '</small></h2><div class="rs">' + skel(4) + '</div></section>'; });
       if (!jobs.length) h += '<p class="empty">' + (addons.some(a => a.loading) ? 'Chargement des addons…' : 'Aucun catalogue. Ajoute des addons dans Réglages.') + '</p>';
-      S.el.querySelector('.rows').innerHTML = h;
+      const rowsEl = S.el.querySelector('.rows');
+      rowsEl.innerHTML = h;
+      if (!S.shown) { S.shown = true; rowsEl.classList.add('rise'); setTimeout(() => rowsEl.classList.remove('rise'), 1200); }   // rangées qui montent en cascade, au premier affichage seulement
       S.el.querySelector('.foot').textContent = 'OneforAll iPhone ' + VERSION + ' (TV ' + TV_VERSION + ') · ' + plural(addons.filter(a => !a.err).length, 'addon');
       if (S.io) S.io.disconnect();
       S.io = new IntersectionObserver(ents => ents.forEach(en => { if (en.isIntersecting) { S.io.unobserve(en.target); S.loadRow(en.target); } }), { root: S.el, rootMargin: '600px 0px' });
@@ -1129,6 +1137,7 @@
       if (dir.length) h += '<p class="dx"><b>Réalisation</b> ' + esc(dir.join(', ')) + '</p>';
       if (isS && full) h += S.episodes();
       q('.db').innerHTML = h;
+      if (full && !S.risen) { S.risen = true; const db = q('.db'); db.classList.add('rise'); setTimeout(() => db.classList.remove('rise'), 1200); }
       const sel = q('.seasons .on');
       if (sel) sel.scrollIntoView({ inline: 'center', block: 'nearest' });
     };
@@ -1746,6 +1755,10 @@
   fitScreen();
   window.addEventListener('resize', fitScreen);
   window.addEventListener('orientationchange', () => setTimeout(fitScreen, 300));
+  // Images : fondu à l'arrivée au lieu d'apparaître d'un coup.
+  document.addEventListener('load', e => { if (e.target.tagName === 'IMG') e.target.classList.add('ld'); }, true);
+  // Sans ça, Safari n'applique pas :active au toucher (effet d'appui sur les cartes et boutons).
+  document.addEventListener('touchstart', () => {}, { passive: true });
   applyTheme();
   APP.innerHTML = '';
   showTab('home');
