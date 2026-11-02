@@ -11,7 +11,7 @@
 (function () {
   'use strict';
 
-  var VERSION = '1.0.1';
+  var VERSION = '1.0.2';
   var TV_VERSION = '4.4.1';
   var CINEMETA = 'https://v3-cinemeta.strem.io/manifest.json';
   var TRAKT_DEFAULT = 'EQpDUWqtRawg2T1wY0v9IwqyaqM50diU9gBkIbHgb1k';
@@ -477,6 +477,7 @@
       b.progress = Math.round(clamp(pct, 0, 100) * 100) / 100;
       this.req('POST', '/scrobble/' + action, b).catch(() => {});
     },
+    delPlayback(id) { if (this.connected()) this.req('DELETE', '/sync/playback/' + id).catch(() => {}); },
     watchlist(item, add) {
       if (!this.connected()) return;
       const id = imdbOf(item.id);
@@ -502,6 +503,7 @@
             logo: meta && meta.logo, releaseInfo: String(o.year || ''), vid, pct: Math.round(p.progress), at
           };
           if (!isM) {
+            e.traktPid = p.id;
             e.label = epLabel({ season: p.episode.season, episode: p.episode.number });
             e.ept = p.episode.title || '';
             const v = meta && (meta.videos || []).find(x => x.id === vid);
@@ -934,8 +936,24 @@
   function cwCard(e) {
     const L = loc(e), still = e.thumb || e.background || e.poster;
     return '<div class="cw" data-a="cw" data-id="' + esc(e.id) + '"><div class="cwi">' + (still ? '<img loading="lazy" decoding="async" src="' + esc(img(still, 500)) + '" alt="">' : '') +
-      '<span class="cwp">' + IC.play + '</span><i class="bar"><u style="width:' + clamp(e.pct || 0, 2, 100) + '%"></u></i></div>' +
+      '<span class="cwp">' + IC.play + '</span><button class="cwx" data-a="cwmore" data-id="' + esc(e.id) + '">' + IC.more + '</button><i class="bar"><u style="width:' + clamp(e.pct || 0, 2, 100) + '%"></u></i></div>' +
       '<div class="pt">' + esc(L.name) + '</div><div class="ps">' + esc(e.label ? e.label + (e.ept ? ' · ' + e.ept : '') : (e.pct ? 'Reste ' + (100 - e.pct) + ' %' : year(e))) + '</div></div>';
+  }
+  // Menu d'une carte « Reprendre la lecture » : retirer, marquer comme vu, ouvrir la fiche.
+  function cwMenu(id) {
+    const e = cwGet(id);
+    if (!e) return;
+    const drop = () => {
+      CW = CW.filter(x => x.id !== id);
+      store.set('cw', CW);
+      if (e.traktPid) Trakt.delPlayback(e.traktPid);
+      homeDirty = true; refreshVisible();
+    };
+    sheet({ title: loc(e).name, sub: e.label ? e.label + (e.ept ? ' · ' + e.ept : '') : '', items: [
+      { l: 'Retirer de « Reprendre la lecture »', cls: 'red', f: () => { drop(); toast('Retiré'); } },
+      { l: 'Marquer comme vu', f: () => { const k = e.vid || e.id; POS[k] = Object.assign({}, POS[k], { done: true, at: Date.now() }); savePos(); drop(); toast('Marqué comme vu'); } },
+      { l: 'Ouvrir la fiche', f: () => openItem(e) }
+    ] });
   }
   function liveMini(ch) {
     return '<div class="lvm" data-a="live" data-id="' + esc(ch.id) + '"><div class="lvt" style="background:' + lvArt(ch.id) + '">' +
@@ -1058,6 +1076,7 @@
     S.act = function (a, el) {
       if (a === 'kind') { S.kind = el.dataset.k; store.set('homeKind', S.kind); S.render(); S.el.scrollTo({ top: 0 }); }
       else if (a === 'cw') resumeCw(el.dataset.id);
+      else if (a === 'cwmore') cwMenu(el.dataset.id);
       else if (a === 'live') playLive(LIVE.ch.find(c => c.id === el.dataset.id));
       else if (a === 'refresh') {
         Object.keys(homeCache).forEach(k => { delete homeCache[k]; });
@@ -1155,14 +1174,29 @@
   // =====================================================================
   const EXT = {
     vlc: ['VLC', u => 'vlc-x-callback://x-callback-url/stream?url=' + encodeURIComponent(u)],
-    infuse: ['Infuse', u => 'infuse://x-callback-url/play?url=' + encodeURIComponent(u)],
+    infuse: ['Infuse', u => 'infuse://x-callback-url/play?url=' + encodeURIComponent(u)],   // format officiel Firecore
     outplayer: ['Outplayer', u => 'outplayer://' + u],
     senplayer: ['SenPlayer', u => 'senplayer://x-callback-url/play?url=' + encodeURIComponent(u)]
   };
   function openExt(url, app) {
     const e = EXT[app || CFG.ext] || EXT.vlc;
-    toast('Ouverture dans ' + e[0] + '… (installe-le depuis l’App Store s’il ne s’ouvre pas)');
-    location.href = e[1](url);
+    toast('Ouverture dans ' + e[0] + '…');
+    const a = document.createElement('a');
+    a.href = e[1](url);
+    a.rel = 'noopener';
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    // Rien n'a pris la main au bout de 3 s (ni l'app vidéo, ni la question d'iOS) : elle n'est sans doute pas installée.
+    let left = false;
+    const away = () => { left = true; };
+    window.addEventListener('blur', away, { once: true });
+    document.addEventListener('visibilitychange', away, { once: true });
+    setTimeout(() => {
+      window.removeEventListener('blur', away);
+      document.removeEventListener('visibilitychange', away);
+      if (!left) toast(e[0] + ' ne s’ouvre pas : installe-le depuis l’App Store, ou choisis une autre app (Réglages)', true);
+    }, 3000);
   }
   function copy(t, msg) {
     (navigator.clipboard ? navigator.clipboard.writeText(t) : Promise.reject()).then(() => toast(msg || 'Copié'), () => toast('Copie impossible', true));
@@ -1700,6 +1734,18 @@
     Trakt.sync();
   });
   if ('serviceWorker' in navigator && HTTPS) navigator.serviceWorker.register('sw.js').catch(() => {});
+  // iOS (app installée, barre d'état translucide) donne une fenêtre plus courte que l'écran de la hauteur de la
+  // barre d'état : la page s'arrêtait avant le bas. On prend la vraie hauteur de l'écran quand l'écart est celui-là.
+  function fitScreen() {
+    const land = window.matchMedia('(orientation: landscape)').matches;
+    const full = land ? Math.min(screen.width, screen.height) : Math.max(screen.width, screen.height);
+    const gap = full - window.innerHeight;
+    const h = navigator.standalone && gap > 0 && gap <= 80 ? full : window.innerHeight;
+    document.documentElement.style.setProperty('--appH', h + 'px');
+  }
+  fitScreen();
+  window.addEventListener('resize', fitScreen);
+  window.addEventListener('orientationchange', () => setTimeout(fitScreen, 300));
   applyTheme();
   APP.innerHTML = '';
   showTab('home');
