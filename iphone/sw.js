@@ -1,6 +1,6 @@
 // Garde l'app (pas les vidéos ni les addons) pour qu'elle s'ouvre tout de suite, même sans réseau.
-// build.sh remplace 1.0.5-1793658336 : à chaque nouvelle version, l'iPhone télécharge les nouveaux fichiers.
-const V = 'ofa-iphone-1.0.5-1793658336';
+// build.sh remplace 1.0.6-1794220059 : à chaque nouvelle version, l'iPhone télécharge les nouveaux fichiers.
+const V = 'ofa-iphone-1.0.6-1794220059';
 const SHELL = ['./', 'index.html', 'app.js', 'style.css', 'manifest.webmanifest', 'icons/icon-180.png',
   'fonts/pjs-400.woff2', 'fonts/pjs-500.woff2', 'fonts/pjs-700.woff2', 'fonts/pjs-800.woff2'];
 self.addEventListener('install', e => { e.waitUntil(caches.open(V).then(c => c.addAll(SHELL)).then(() => self.skipWaiting())); });
