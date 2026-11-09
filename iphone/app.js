@@ -11,7 +11,7 @@
 (function () {
   'use strict';
 
-  var VERSION = '1.0.5';
+  var VERSION = '1.0.6';
   var TV_VERSION = '4.4.1';
   var CINEMETA = 'https://v3-cinemeta.strem.io/manifest.json';
   var TRAKT_DEFAULT = 'EQpDUWqtRawg2T1wY0v9IwqyaqM50diU9gBkIbHgb1k';
@@ -1346,6 +1346,14 @@
       if (p && p.catch) p.catch(() => { S.msg('Touche ▶ pour lancer la lecture'); S.peek(true); });
       S.subs(x);
     };
+    // Pas de sous-titres automatiques quand l'audio est en français (comme sur la TV et le Mac) : langue de la piste jouée
+    // si Safari la connaît, sinon le nom de la source (VFF, VF, TRUEFRENCH, MULTI, 🇫🇷 ; VOSTFR = VO, donc non).
+    const audioFr = x => {
+      const at = V.audioTracks;
+      if (at) for (let i = 0; i < at.length; i++) if (at[i].enabled && at[i].language && at[i].language !== 'und') return /^fr/i.test(at[i].language);
+      const L = (x.p || parseSrc(x)).langs || [];
+      return L.some(l => /^(VFF|VFQ|VFI|VF2|VF|MULTI)$/.test(l)) || L.indexOf('FR') > -1 && L.indexOf('VOSTFR') < 0;
+    };
     // Sous-titres : jusqu'à 3 dans la langue choisie et 1 en anglais, dans le menu du lecteur.
     S.subs = function (x) {
       subtitlesFor(item.type, vid, x.st).then(list => {
@@ -1357,8 +1365,9 @@
           const t = document.createElement('track');
           t.kind = 'subtitles'; t.label = langLabel(s.lang) + (i ? ' ' + (i + 1) : '') + (s.src && s.src !== 'source' ? ' · ' + s.src : ''); t.srclang = ISO2[langKey(s.lang)] || 'und'; t.src = u;
           V.appendChild(t);
-          if (CFG.subAuto && langKey(s.lang) === want && ![].some.call(V.textTracks, tt => tt.mode === 'showing')) setTimeout(() => { if (t.track) t.track.mode = 'showing'; }, 100);
-          else setTimeout(() => { if (t.track && t.track.mode === 'showing' && !CFG.subAuto) t.track.mode = 'disabled'; }, 100);
+          const auto = CFG.subAuto && !audioFr(x);
+          if (auto && langKey(s.lang) === want && ![].some.call(V.textTracks, tt => tt.mode === 'showing')) setTimeout(() => { if (t.track) t.track.mode = 'showing'; }, 100);
+          else setTimeout(() => { if (t.track && t.track.mode === 'showing' && !auto) t.track.mode = 'disabled'; }, 100);
         }).catch(() => {}));
       });
     };
@@ -1598,7 +1607,7 @@
       S.el.innerHTML = '<header class="hd"><h1>Réglages</h1></header>' +
         '<h3>Trakt</h3><div class="grp">' + (tk ? line('tsync', 'Synchroniser maintenant', last ? 'Fait à ' + clock(new Date(last)) : '') + line('tout', 'Déconnecter Trakt', '', 'red') : line('tlink', 'Connecter Trakt', 'Reprise, vus, Ma liste')) + '</div>' +
         '<h3>Lecture</h3><div class="grp">' + line('player', 'Lecteur', lab(PLAYER_OPTS, CFG.player)) + line('ext', 'App vidéo (MKV, chaînes)', lab(EXT_OPTS, CFG.ext)) +
-        line('sub', 'Langue des sous-titres', LANGS[CFG.subLang]) + tog('subauto', 'Sous-titres automatiques', CFG.subAuto, 'Sinon, choisis-les dans le lecteur') + '</div>' +
+        line('sub', 'Langue des sous-titres', LANGS[CFG.subLang]) + tog('subauto', 'Sous-titres automatiques', CFG.subAuto, 'Jamais quand l’audio est en français ; sinon, choisis-les dans le lecteur') + '</div>' +
         '<h3>Direct</h3><div class="grp">' + line('liveq', 'Qualité des chaînes', LIVE_QL[CFG.liveQ]) +
         (XT() ? line('livere', HTTPS ? 'Liste des chaînes' : 'Recharger les chaînes', LIVE.ch.length ? plural(LIVE.ch.length, 'chaîne') : 'aucune') : line('code', 'IPTV', 'non configurée')) + '</div>' +
         '<h3>Addons</h3><div class="grp">' + line('addons', 'Gérer les addons', plural(addons.length, 'addon')) + line('code', 'Code de configuration', SETUP ? 'importé le ' + frDate(SETUP.at) : 'à coller') + '</div>' +
