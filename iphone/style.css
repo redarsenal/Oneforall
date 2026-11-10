@@ -136,6 +136,7 @@ body.night .seg .on{background:#2A2C2E}
 .dlogo img{max-width:78%;max-height:100px;object-fit:contain;filter:drop-shadow(0 4px 14px rgba(0,0,0,.35))}
 .dlogo h1{font-size:32px;font-weight:800;line-height:1.08;text-align:center;letter-spacing:-.01em}
 .db{padding:6px 16px 0}
+.dre{margin:10px -16px 0}
 .dm{text-align:center;color:var(--fg2);font-size:13.5px;margin-bottom:14px}
 .imdb{margin:0 5px 0 10px;padding:1px 5px;border-radius:4px;background:#F5C518;color:#000;font-size:11px;font-weight:800}
 .dact{display:flex;flex-direction:column;gap:10px}
@@ -357,3 +358,7 @@ body.night .seg .on{background:var(--lgon)}
 /* Réglages → Animations : Aucune, ou « Réduire les animations » de l'iPhone */
 body.noanim *,body.noanim *::before,body.noanim *::after{animation:none!important;transition:none!important}
 @media (prefers-reduced-motion:reduce){*,*::before,*::after{animation:none!important;transition:none!important}}
+
+.hbt{display:flex;gap:2px}
+.dx .dp{color:var(--fg);text-decoration:underline;text-decoration-color:var(--line);text-underline-offset:3px}
+.person .pbx{padding:8px 0 calc(var(--tabh) + 20px)}
