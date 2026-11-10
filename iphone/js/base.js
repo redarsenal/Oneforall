@@ -17,7 +17,7 @@
 // Ne pas nommer une variable globale comme une propriété du navigateur (top, name, status…).
 'use strict';
 
-var VERSION = '1.0.9';
+var VERSION = '1.0.10';
 var TV_VERSION = '4.4.1';
 var CINEMETA = 'https://v3-cinemeta.strem.io/manifest.json';
 var TRAKT_DEFAULT = 'EQpDUWqtRawg2T1wY0v9IwqyaqM50diU9gBkIbHgb1k';

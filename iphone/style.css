@@ -118,8 +118,8 @@ body.night .seg .on{background:#2A2C2E}
 .lvt{position:relative;aspect-ratio:16/9;border-radius:12px;overflow:hidden;display:flex;align-items:center;justify-content:center}
 .lvt img{max-width:62%;max-height:56%;object-fit:contain;filter:drop-shadow(0 2px 6px rgba(0,0,0,.35))}
 .lvt b{position:absolute;left:7px;top:6px;font-size:11px;font-weight:800;color:#fff;background:rgba(0,0,0,.35);padding:1px 6px;border-radius:6px}
-.grid{display:grid;grid-template-columns:repeat(3,1fr);gap:16px 10px;padding:0 16px}
-.grid .po{width:auto}
+.grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px 10px;padding:0 16px}
+.grid .po{width:auto;min-width:0}
 
 /* fiche */
 .det{padding-top:0}

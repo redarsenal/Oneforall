@@ -1,6 +1,6 @@
 // Garde l'app (pas les vidéos ni les addons) pour qu'elle s'ouvre tout de suite, même sans réseau.
-// build.sh remplace 1.0.9-1794318266 : à chaque nouvelle version, l'iPhone télécharge les nouveaux fichiers.
-const V = 'ofa-iphone-1.0.9-1794318266';
+// build.sh remplace 1.0.10-1794318692 : à chaque nouvelle version, l'iPhone télécharge les nouveaux fichiers.
+const V = 'ofa-iphone-1.0.10-1794318692';
 const SHELL = ['./', 'index.html',
   'js/base.js', 'js/trakt.js', 'js/iptv.js', 'js/interface.js', 'js/ecrans.js', 'js/lecteur.js', 'js/sync.js', 'js/reglages.js',
   'style.css', 'manifest.webmanifest', 'icons/icon-180.png',

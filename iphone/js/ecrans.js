@@ -144,7 +144,7 @@ function Home() {
     const cw = CW.filter(ok);
     if (cw.length) h += row('Reprendre la lecture', cw.map(cwCard).join(''), 'cwr');
     const lib = LIB.filter(ok);
-    if (lib.length) h += row('Ma liste', lib.slice(0, 20).map(m => posterCard(m)).join(''));
+    if (lib.length) h += row('Ma liste', lib.map(m => posterCard(m)).join(''));
     const reco = HIST.some(x => k === 'all' || x.type === k) || traktReco(k).length > 0;
     if (reco) h += '<section class="row reco"><h2>Pour toi</h2><div class="rs">' + skel(4) + '</div></section>';
     if (k === 'all' && liveList().length) h += row('En direct', liveFavs().slice(0, 12).map(liveMini).join(''), 'lvr');

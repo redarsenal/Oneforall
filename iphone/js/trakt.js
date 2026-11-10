@@ -123,8 +123,8 @@ const Trakt = {
         }));
       });
       savePos();
-      const wl = ((await this.req('GET', '/sync/watchlist?limit=80')) || []).filter(w => (w.type === 'movie' || w.type === 'show') && w[w.type].ids.imdb && !libHas(w[w.type].ids.imdb));
-      const newLib = (await pmap(wl.slice(0, 60), 4, async w => {
+      const wl = ((await this.req('GET', '/sync/watchlist?limit=1000')) || []).filter(w => (w.type === 'movie' || w.type === 'show') && w[w.type].ids.imdb && !libHas(w[w.type].ids.imdb));
+      const newLib = (await pmap(wl, 6, async w => {
         const o = w[w.type], type = w.type === 'movie' ? 'movie' : 'series', meta = await metaFor({ type, id: o.ids.imdb });
         return { id: o.ids.imdb, type, name: (meta && meta.name) || o.title, poster: meta && meta.poster, background: meta && meta.background, releaseInfo: String(o.year || '') };
       })).filter(Boolean);
