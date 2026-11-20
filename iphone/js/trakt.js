@@ -29,7 +29,7 @@ const Trakt = {
     try { d = await r.json(); } catch (e) {}
     return { status: r.status, d };
   },
-  async req(method, path, body) {
+  async req(method, path, body, again) {
     let t = this.tok();
     if (t && Date.now() / 1000 > t.created_at + t.expires_in - 3600) t = await this.refresh(t);
     const h = { 'Content-Type': 'application/json', 'trakt-api-version': '2', 'trakt-api-key': TRAKT_ID() };
@@ -39,18 +39,27 @@ const Trakt = {
     try { r = await fetch(TAPI + path, { method, headers: h, body: body ? JSON.stringify(body) : undefined, signal: ctl.signal }); }
     catch (e) { throw new Error('Trakt injoignable'); }
     finally { clearTimeout(tm); }
+    // Jeton refusé : on le renouvelle une fois et on réessaie, avant de conclure qu'il faut se reconnecter.
+    if (r.status === 401 && t && !again && t.refresh_token) { await this.refresh(t, true); return this.req(method, path, body, true); }
     if (r.status === 401 && t) { store.set('trakt', null); throw new Error('Trakt : il faut se reconnecter (Réglages)'); }
     if (r.status === 204 || r.status === 409) return null;
     if (!r.ok) throw new Error('Trakt : erreur ' + r.status);
     return r.json().catch(() => null);
   },
-  async refresh(t) {
-    const r = await this.post('/oauth/token', {
+  // Un seul renouvellement à la fois (comme sur la TV) : le code de renouvellement ne sert qu'une fois, deux requêtes
+  // qui renouvellent ensemble (synchro + lecture) déconnectaient l'app. Erreur réseau ou serveur : la connexion est gardée.
+  refresh(t, force) {
+    if (this.refreshing) return this.refreshing;
+    const cur0 = this.tok();
+    if (!force && cur0 && cur0.access_token !== t.access_token) return Promise.resolve(cur0);   // déjà renouvelé entre-temps
+    this.refreshing = this.post('/oauth/token', {
       refresh_token: t.refresh_token, client_id: TRAKT_ID(), client_secret: TRAKT_SECRET(), redirect_uri: tr().redirect || 'http://localhost', grant_type: 'refresh_token'
-    });
-    if (r.status !== 200 || !r.d) { store.set('trakt', null); throw new Error('Trakt : il faut se reconnecter (Réglages)'); }
-    store.set('trakt', r.d);
-    return r.d;
+    }).then(r => {
+      if (r.status === 200 && r.d) { store.set('trakt', r.d); return r.d; }
+      if (r.status === 400 || r.status === 401 || r.status === 403) { store.set('trakt', null); throw new Error('Trakt : il faut se reconnecter (Réglages)'); }
+      throw new Error('Trakt : erreur ' + r.status);
+    }, () => { throw new Error('Trakt injoignable'); }).finally(() => { this.refreshing = null; });
+    return this.refreshing;
   },
   disconnect() {
     const t = this.tok();
