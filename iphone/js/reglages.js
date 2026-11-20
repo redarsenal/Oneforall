@@ -5,6 +5,84 @@
 // =====================================================================
 // Recherche
 // =====================================================================
+// Recherche TMDB (titres français et originaux) : le titre le plus proche de la saisie et le plus connu d'abord.
+// Sans clé TMDB, rien n'est trouvé ici et seuls les addons répondent.
+function normTitle(s) {
+  return String(s || '').normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().replace(/[\s.,:;!?'’"()\[\]\-–—&\/+]+/g, ' ').trim();
+}
+// Proximité d'un titre avec la saisie : 3 exact, 2 commence par, 1,5 un mot commence par, 1 contient, 0 sinon.
+function titleMatch(t, q) {
+  const n = normTitle(t);
+  q = normTitle(q);
+  if (!q) return 0;
+  if (n === q) return 3;
+  if (n.indexOf(q) === 0) return 2;
+  if ((' ' + n).indexOf(' ' + q) > -1) return 1.5;
+  return n.indexOf(q) > -1 ? 1 : 0;
+}
+// Un titre TMDB en fiche lisible : il lui faut son numéro IMDb (les addons rangent tout par numéro IMDb).
+function tmdbItem(x, media) {
+  return tmdb('/' + media + '/' + x.id + '/external_ids').then(e => !e || !/^tt\d+$/.test(e.imdb_id || '') ? null : {
+    id: e.imdb_id, type: media === 'tv' ? 'series' : 'movie', name: x.title || x.name,
+    poster: 'https://image.tmdb.org/t/p/w342' + x.poster_path,
+    background: x.backdrop_path ? 'https://image.tmdb.org/t/p/w1280' + x.backdrop_path : undefined,
+    description: x.overview || '', releaseInfo: String(x.release_date || x.first_air_date || '').slice(0, 4),
+    imdbRating: x.vote_average ? x.vote_average.toFixed(1) : undefined,
+    genres: (x.genre_ids || []).map(g => TMDB_G[g]).filter(Boolean)
+  }, () => null);
+}
+// Films et séries trouvés par TMDB, classés par pertinence du titre + notoriété (log du nombre de votes : 10 → 1, 10 000 → 4).
+// actor : le nom de l'acteur quand la saisie est exactement son nom (« brad pitt »).
+async function tmdbSearch(q) {
+  const u = '/search/multi?language=fr-FR&include_adult=false&query=' + encodeURIComponent(q) + '&page=';
+  const pages = await Promise.all([1, 2].map(p => tmdb(u + p).catch(() => null)));
+  const seen = new Set(), hits = [];
+  let actor = null;
+  pages.forEach(r => ((r && r.results) || []).forEach(x => {
+    const k = x.media_type + x.id;
+    if (seen.has(k)) return;
+    seen.add(k);
+    if (x.media_type === 'person') {
+      if (!actor && x.known_for_department === 'Acting' && x.profile_path && titleMatch(x.name, q) === 3) actor = x.name;
+      return;
+    }
+    if ((x.media_type !== 'movie' && x.media_type !== 'tv') || !x.poster_path) return;
+    if ((x.genre_ids || []).some(g => g === 10763 || g === 10767)) return;   // ni info, ni talk-show
+    const m = Math.max(titleMatch(x.title, q), titleMatch(x.name, q), titleMatch(x.original_title, q), titleMatch(x.original_name, q));
+    hits.push({ s: m + Math.log10((x.vote_count || 0) + 1), x });
+  }));
+  hits.sort((a, b) => b.s - a.s);
+  const l = await pmap(hits.slice(0, 24), 8, h => tmdbItem(h.x, h.x.media_type));
+  return { titles: l.filter(Boolean), actor };
+}
+// Les films et séries les plus connus d'un acteur (quand on tape son nom).
+async function tmdbStarring(name) {
+  const r = await tmdb('/search/person?language=fr-FR&query=' + encodeURIComponent(name));
+  const hit = ((r && r.results) || []).find(x => x.known_for_department === 'Acting');
+  if (!hit) return [];
+  const c = await tmdb('/person/' + hit.id + '/combined_credits?language=fr-FR'), seen = new Set();
+  const l = ((c && c.cast) || []).filter(x => (x.media_type === 'movie' || x.media_type === 'tv') && x.poster_path
+    && !/\b(self|himself|herself|lui-même|elle-même|narrat)/i.test(x.character || '')
+    && !(x.genre_ids || []).some(g => g === 10767 || g === 10763 || g === 10764))
+    .filter(x => { const k = x.media_type + x.id; if (seen.has(k)) return false; seen.add(k); return true; })
+    .sort((a, b) => (b.vote_count || 0) - (a.vote_count || 0)).slice(0, 24);
+  return (await pmap(l, 8, x => tmdbItem(x, x.media_type))).filter(Boolean);
+}
+// Tous les résultats en une liste : TMDB d'abord (déjà classé), puis ce que seuls les addons connaissent,
+// le titre le plus proche en premier et les titres sans affiche en dernier. Sans doublons.
+function mergeSearch(tm, fromAddons, q) {
+  const seen = new Set(), out = [];
+  tm.forEach(m => { if (!seen.has(m.id)) { seen.add(m.id); out.push(m); } });
+  const extra = [];
+  fromAddons.forEach(m => { if (m && !seen.has(m.id)) { seen.add(m.id); extra.push(m); } });
+  const rank = m => titleMatch(m.name, q) - (m.poster ? 0 : 10);
+  return out.concat(extra.map((m, i) => ({ m, i, s: rank(m) })).sort((a, b) => b.s - a.s || a.i - b.i).map(x => x.m));
+}
+// TMDB pour une saisie : la filmographie de l'acteur s'il est tapé en entier, puis les titres trouvés.
+function tmdbResults(q) {
+  return tmdbSearch(q).then(r => r.actor ? tmdbStarring(r.actor).catch(() => []).then(s => s.concat(r.titles)) : r.titles).catch(() => []);
+}
+
 function Search() {
   const S = { cls: 'search', q: '', seq: 0 };
   S.build = function () {
@@ -18,7 +96,7 @@ function Search() {
   S.focus = () => S.inp.focus();
   S.recent = function () {
     const r = store.get('recent', []);
-    S.el.querySelector('.sres').innerHTML = r.length ? '<h3>Recherches récentes</h3><div class="rec">' + r.map(q => '<button class="chip" data-a="q" data-q="' + esc(q) + '">' + esc(q) + '</button>').join('') + '</div>' : '<p class="empty">Cherche dans tous tes addons à la fois.</p>';
+    S.el.querySelector('.sres').innerHTML = r.length ? '<h3>Recherches récentes</h3><div class="rec">' + r.map(q => '<button class="chip" data-a="q" data-q="' + esc(q) + '">' + esc(q) + '</button>').join('') + '</div>' : '<p class="empty">Films et séries, en français ou en version originale.</p>';
   };
   S.run = function (q, keep) {
     const seq = ++S.seq;
@@ -27,18 +105,20 @@ function Search() {
     if (keep) store.set('recent', [q].concat(store.get('recent', []).filter(x => x.toLowerCase() !== q.toLowerCase())).slice(0, 10));
     const jobs = catalogs(c => canSearch(c) && (c.type === 'movie' || c.type === 'series'));
     const box = S.el.querySelector('.sres');
+    if (!jobs.length && !TMDB_KEY()) { box.innerHTML = '<p class="empty">Aucun addon ne permet la recherche.</p>'; return; }
     box.innerHTML = '<p class="empty"><i class="spin"></i>Recherche…</p>';
-    const res = { movie: [], series: [] }, ids = new Set();
-    let left = jobs.length, failed = 0;
+    // Films et séries ensemble : TMDB d'abord (titres français, le plus proche et le plus connu en premier), puis les addons.
+    const all = [];
+    let tm = [], tmLeft = 1, left = jobs.length, failed = 0;
     const draw = () => {
       if (seq !== S.seq) return;
-      let h = '';
-      [['movie', 'Films'], ['series', 'Séries']].forEach(t => { if (res[t[0]].length) h += '<h3>' + t[1] + '</h3><div class="grid">' + res[t[0]].slice(0, 30).map(m => posterCard(m)).join('') + '</div>'; });
-      box.innerHTML = h || '<p class="empty">' + (left ? '<i class="spin"></i>Recherche…' : failed === jobs.length ? 'Les addons de recherche ne répondent pas. Réessaie dans un moment.' : 'Aucun résultat pour « ' + esc(q) + ' ».') + '</p>';
+      const l = kidList(mergeSearch(tm, all, q)).slice(0, 60), busy = left + tmLeft > 0;
+      box.innerHTML = l.length ? '<div class="grid">' + l.map(m => posterCard(m)).join('') + '</div>' + (busy ? '<p class="empty"><i class="spin"></i>Recherche…</p>' : '')
+        : '<p class="empty">' + (busy ? '<i class="spin"></i>Recherche…' : jobs.length && failed === jobs.length && !TMDB_KEY() ? 'Les addons de recherche ne répondent pas. Réessaie dans un moment.' : 'Aucun résultat pour « ' + esc(q) + ' ».') + '</p>';
     };
-    if (!jobs.length) { box.innerHTML = '<p class="empty">Aucun addon ne permet la recherche.</p>'; return; }
+    tmdbResults(q).then(l => { tm = l; tmLeft = 0; draw(); });
     jobs.forEach(j => fetchCatalog(j, 'search=' + encodeURIComponent(q), 600e3).then(items => {
-      kidList(items).forEach(m => { if (m.poster && !ids.has(m.id) && res[m.type]) { ids.add(m.id); res[m.type].push(m); } });
+      items.forEach(m => { if (m.poster && (m.type === 'movie' || m.type === 'series')) all.push(m); });
     }, () => { failed++; }).then(() => { left--; draw(); }));
   };
   S.act = function (a, el) {
